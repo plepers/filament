@@ -62,7 +62,7 @@ static const size_t IBL_DEFAULT_SIZE = 256;
 static const size_t IBL_DEFAULT_MIN_LOD_SIZE = 16;
 
 enum class OutputType {
-    FACES, KTX, EQUIRECT, OCTAHEDRON
+    FACES, KTX, EQUIRECT, OCTAHEDRON, SPLIT_OCTAHEDRON
 };
 
 static image::ImageEncoder::Format g_format = image::ImageEncoder::Format::PNG;
@@ -308,6 +308,10 @@ static int handleCommandLineArgments(int argc, char* argv[]) {
                 }
                 if (arg == "octahedron") {
                     g_type = OutputType::OCTAHEDRON;
+                    type_specified = true;
+                }
+                if (arg == "splitocta") {
+                    g_type = OutputType::SPLIT_OCTAHEDRON;
                     type_specified = true;
                 }
                 break;
@@ -765,6 +769,12 @@ void sphericalHarmonics(utils::JobSystem& js, const utils::Path& iname, const Cu
                     CubemapUtils::cubemapToOctahedron(js, image, cm);
                 }
 
+                if (g_type == OutputType::SPLIT_OCTAHEDRON) {
+                    size_t dim = cm.getDimensions();
+                    image = Image(dim * 2, dim);
+                    CubemapUtils::cubemapToSplitOctahedron(js, image, cm);
+                }
+
                 saveImage(g_sh_filename, ImageEncoder::chooseFormat(g_sh_filename.getName()),
                         image, g_compression);
             }
@@ -871,6 +881,16 @@ void iblMipmapPrefilter(utils::JobSystem& js, const utils::Path& iname,
             size_t dim = dst.getDimensions();
             Image image(dim, dim);
             CubemapUtils::cubemapToOctahedron(js, image, dst);
+            std::string filename = outputDir + ("is_m" + std::to_string(level) + ext);
+            saveImage(filename, g_format, image, g_compression);
+            continue;
+        }
+
+
+        if (g_type == OutputType::SPLIT_OCTAHEDRON) {
+            size_t dim = dst.getDimensions();
+            Image image(dim * 2, dim);
+            CubemapUtils::cubemapToSplitOctahedron(js, image, dst);
             std::string filename = outputDir + ("is_m" + std::to_string(level) + ext);
             saveImage(filename, g_format, image, g_compression);
             continue;
@@ -1011,6 +1031,14 @@ void iblRoughnessPrefilter(
             continue;
         }
 
+        if (g_type == OutputType::SPLIT_OCTAHEDRON) {
+            Image outImage(dim * 2, dim);
+            CubemapUtils::cubemapToSplitOctahedron(js, outImage, dst);
+            std::string filename = outputDir + ("m" + std::to_string(level) + ext);
+            saveImage(filename, g_format, outImage, g_compression);
+            continue;
+        }
+
         for (size_t j = 0; j < 6; j++) {
             Cubemap::Face face = (Cubemap::Face) j;
             std::string filename = outputDir
@@ -1083,6 +1111,14 @@ void iblDiffuseIrradiance(utils::JobSystem& js, const utils::Path& iname,
         size_t dim = dst.getDimensions();
         Image image(dim, dim);
         CubemapUtils::cubemapToOctahedron(js, image, dst);
+        std::string filename = outputDir + ("irradiance" + ext);
+        saveImage(filename, g_format, image, g_compression);
+    }
+
+    if (g_type == OutputType::SPLIT_OCTAHEDRON) {
+        size_t dim = dst.getDimensions();
+        Image image(dim * 2, dim);
+        CubemapUtils::cubemapToSplitOctahedron(js, image, dst);
         std::string filename = outputDir + ("irradiance" + ext);
         saveImage(filename, g_format, image, g_compression);
     }
@@ -1222,6 +1258,15 @@ void extractCubemapFaces(utils::JobSystem& js, const utils::Path& iname, const C
         size_t dim = cm.getDimensions();
         Image image(dim, dim);
         CubemapUtils::cubemapToOctahedron(js, image, cm);
+        std::string filename = outputDir + ("skybox" + ext);
+        saveImage(filename, g_format, image, g_compression);
+        return;
+    }
+    
+    if (g_type == OutputType::SPLIT_OCTAHEDRON) {
+        size_t dim = cm.getDimensions();
+        Image image(dim * 2, dim);
+        CubemapUtils::cubemapToSplitOctahedron(js, image, cm);
         std::string filename = outputDir + ("skybox" + ext);
         saveImage(filename, g_format, image, g_compression);
         return;

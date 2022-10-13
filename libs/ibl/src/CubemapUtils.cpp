@@ -301,6 +301,45 @@ void CubemapUtils::cubemapToOctahedron(JobSystem& js, Image& dst, const Cubemap&
     js.runAndWait(job);
 }
 
+void CubemapUtils::cubemapToSplitOctahedron(JobSystem& js, Image& dst, const Cubemap& src) {
+    const float w = dst.getWidth();
+    const float h = dst.getHeight();
+    auto parallelJobTask = [&](size_t j0, size_t count) {
+        for (size_t j = j0; j < j0 + count; j++) {
+            for (size_t i = 0; i < w; i++) {
+                float3 c = 0;
+                const size_t numSamples = 64; // TODO: how to chose numsamples
+                for (size_t sample = 0; sample < numSamples; sample++) {
+                    const float2 u = hammersley(uint32_t(sample), 1.0f / numSamples);
+                    float _u = (i + u.x) / w;
+                    float _v = (j + u.y) / h;
+                    float px = _u*4.0f - 1.0f;
+                    float py = _v*2.0f - 1.0f;
+                    float sign;
+                    if( px > 1.0f ){
+                        px -= 2.0f;
+                        sign = -1.0f;
+                    } else {
+                        sign = 1.0f;
+                    }
+
+                    float x = ( sign * px + py ) / 2.0f;
+                    float y = ( sign * px - py ) / 2.0f;
+                    float z = 1.0f - std::abs(x) - std::abs(y);
+                    z *= sign;
+                    
+                    c += src.filterAt({x, y, z});
+                }
+                Cubemap::writeAt(dst.getPixelRef(i, j), c * (1.0f / numSamples));
+            }
+        }
+    };
+
+    auto job = jobs::parallel_for(js, nullptr, 0, uint32_t(h),
+            std::ref(parallelJobTask), jobs::CountSplitter<1, 8>());
+    js.runAndWait(job);
+}
+
 void CubemapUtils::crossToCubemap(JobSystem& js, Cubemap& dst, const Image& src) {
     process<EmptyState>(dst, js,
             [&](EmptyState&, size_t iy, Cubemap::Face f, Cubemap::Texel* data, size_t dimension) {

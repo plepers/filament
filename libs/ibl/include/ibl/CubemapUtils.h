@@ -106,6 +106,10 @@ public:
     //! Converts a Cubemap to an octahedron
     static void cubemapToOctahedron(utils::JobSystem& js, Image& dst, const Cubemap& src);
 
+
+    //! Converts a Cubemap to a split octahedron
+    static void cubemapToSplitOctahedron(utils::JobSystem& js, Image& dst, const Cubemap& src);
+
     //! mirror the cubemap in the horizontal direction
     static void mirrorCubemap(utils::JobSystem& js, Cubemap& dst, const Cubemap& src);
 
