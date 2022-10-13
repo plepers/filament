@@ -771,7 +771,7 @@ void sphericalHarmonics(utils::JobSystem& js, const utils::Path& iname, const Cu
                     size_t outputDimension = cm.getDimensions();
                     outputImage = Image(outputDimension, outputDimension);
                     CubemapUtils::cubemapToOctahedron(js, outputImage, cm);
-                }
+                } 
                 else if (g_type == OutputType::SPLIT_OCTAHEDRON) {
                     size_t dim = cm.getDimensions();
                     image = Image(dim * 2, dim);
